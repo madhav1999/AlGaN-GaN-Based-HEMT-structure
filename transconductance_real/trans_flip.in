@@ -1,0 +1,86 @@
+go atlas
+set vstart = 0
+set vstop = 15
+set vinc = .5
+set index=1
+set light=1e-5
+mesh width=100 ^diag.flip
+x.m l=0 s=0.2
+x.m l=0.5 s=0.2
+x.m l=1.0 s=0.1
+x.m l=3 s=0.25
+x.m l=4 s=0.25
+x.m l=6 s=0.1
+x.m l=9 s=0.75
+
+y.m l=-20 s=3
+y.m l=-5 s=1
+y.m l=0.2 s=0.2
+y.m l=0.5 s=0.01
+y.m l=0.5267 s=0.0025
+y.m l=0.75 s=0.1
+y.m l=1.0 s=0.05
+y.m l=2.0 s=0.25
+y.m l=3.0 s=3
+y.m l=20 s=3
+
+region num=1 x.min=0.5 x.max=8.5 y.max=0.5267 mat=AlGaN x.comp=0.25
+region num=2 x.min=0.0 x.max=9.0 y.min=-5 y.max=0.5 mat=nitride insulator
+region num=3 x.min=0.5 x.max=8.5 y.min=0.5267 y.max=1 mat=GaN donors=1e15 substrate
+region num=4 x.min=0.0 x.max=9.0 y.min=1.0 y.max=2.0 mat=GaN
+region num=5 x.min=0.0 x.max=9.0 y.min=2.0 y.max=20.0 mat=sapphire insulator
+region num=6 x.min=0.0 x.max=9.0 y.min=-20 y.max=-5 mat=AlN
+
+elec num=1 name=source x.min=0 x.max=1 y.min=-5 y.max=1
+elec num=2 name=drain x.min=6 x.max=9 y.min=-5 y.max=1
+elec num=3 name=gate x.min=3 x.max=4 y.min=0.2 y.max=0.5
+elec num=4 substrate
+
+contact name=gate work=5.1
+contact name=source work=4.31
+contact name=drain work=4.31
+
+models k.p print srh
+model lat.temp
+mobility FMCT.N Gansat.N
+model polarization calc.strain polar.scale=0.75
+model region=1 pch.elec
+interface neutralize x.min=3 x.max=4 y.min=0.48 y.max=0.52
+thermcontact num=1 y.min=20 y.max=20 ext.temp=300 alpha=5000
+
+output con.band val.band charge polar.charge band.par e.mobility
+
+
+
+##############################################################
+save outfile=mainhemt_flip.str
+
+
+#### OFF state:
+solve vgate=-0.05
+solve name=gate vstep=-0.05 vfinal=-2
+solve name=gate vstep=-0.5 vfinal=-8
+
+save outfile=mainhemt_flip_Vg-8V_Vd0V.str
+
+
+load infile=mainhemt_flip_Vg-8V_Vd0V.str master
+solve previous 
+
+solve vdrain=0.0 vstep=0.5 vfinal=5 name=drain
+log outfile=mainhemt_flip_Vds_5V.log
+solve vgate=-8
+solve vstep=0.5 vfinal=-7.0 name=gate
+solve vstep=0.2 vfinal= -2.0 name=gate
+
+
+## Transconductance (dId/dVg):
+extract init infile="mainhemt_flip_Vds_5V.log"
+extract name="gm" deriv(v."gate", i."drain"/10) outfile="mainhemt_flip_gm_Vds_5V.dat"
+
+
+log off
+
+tonyplot  mainhemt_flip_gm_Vds_5V.dat 
+
+############################################################
